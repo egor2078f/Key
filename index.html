@@ -3,54 +3,76 @@
 <head>
     <title>Генератор ключей</title>
     <style>
-        body { font-family: Arial; text-align: center; padding: 50px; }
-        button { padding: 10px 20px; font-size: 16px; margin: 10px; }
-        #key { font-weight: bold; margin: 20px; padding: 10px; background: #f0f0f0; }
+        body { font-family: Arial, sans-serif; text-align: center; padding: 50px; background: #f0f0f0; }
+        .container { background: white; padding: 30px; border-radius: 10px; display: inline-block; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        button { padding: 12px 24px; font-size: 16px; background: #4CAF50; color: white; border: none; border-radius: 5px; cursor: pointer; margin: 10px; }
+        button:disabled { background: #cccccc; cursor: not-allowed; }
+        #key { font-weight: bold; margin: 20px; padding: 15px; background: #e9e9e9; border-radius: 5px; word-break: break-all; }
+        .error { color: red; }
+        .success { color: green; }
     </style>
 </head>
 <body>
-    <h1>🔑 Генератор ключей</h1>
-    <button onclick="generateKey()">Получить ключ</button>
-    <div id="key"></div>
+    <div class="container">
+        <h1>🔑 Генератор ключей</h1>
+        <p>Ключ действует 24 часа и может быть использован только один раз</p>
+        <button onclick="generateKey()" id="generateBtn">Получить ключ</button>
+        <div id="status"></div>
+        <div id="key"></div>
+    </div>
 
     <script>
+        const GITHUB_USER = 'egor2078f';
+        const REPO_NAME = 'Key';
+        const API_TOKEN = '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';
+
         async function generateKey() {
-            const btn = event.target;
-            btn.disabled = true;
+            const btn = document.getElementById('generateBtn');
+            const status = document.getElementById('status');
+            const keyDisplay = document.getElementById('key');
             
+            btn.disabled = true;
+            status.innerHTML = '<div class="success">Генерация ключа...</div>';
+            keyDisplay.innerHTML = '';
+
             try {
-                // Создаем issue через GitHub API
-                const response = await fetch('https://api.github.com/repos/ТВОЙ_ЮЗЕР/ТВОЙ_РЕПО/issues', {
+                const key = 'KEY_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9).toUpperCase();
+                
+                const response = await fetch(`https://api.github.com/repos/${GITHUB_USER}/${REPO_NAME}/issues`, {
                     method: 'POST',
                     headers: {
-                        'Authorization': 'token ТВОЙ_ТОКЕН',
+                        'Authorization': `token ${API_TOKEN}`,
+                        'Accept': 'application/vnd.github.v3+json',
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        title: `KEY_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-                        body: `Создан: ${new Date().toISOString()}\nIP: ${await getIP()}`,
-                        labels: ['key']
+                        title: key,
+                        body: `Время создания: ${new Date().toISOString()}\nСтатус: активен`,
+                        labels: ['key-active']
                     })
                 });
-                
+
+                if (!response.ok) {
+                    throw new Error('Ошибка GitHub API: ' + response.status);
+                }
+
                 const data = await response.json();
-                const key = data.title.replace('KEY_', '');
+                const userKey = key.replace('KEY_', '');
+                keyDisplay.innerHTML = `Ваш ключ: <br><strong>${userKey}</strong>`;
+                status.innerHTML = '<div class="success">✅ Ключ успешно сгенерирован!</div>';
                 
-                document.getElementById('key').innerHTML = `Ключ: ${key}`;
-                navigator.clipboard.writeText(key);
-                alert('Ключ скопирован!');
-                
+                navigator.clipboard.writeText(userKey).then(() => {
+                    setTimeout(() => {
+                        alert('Ключ скопирован в буфер обмена!');
+                    }, 100);
+                });
+
             } catch (error) {
-                alert('Ошибка генерации');
+                console.error('Ошибка:', error);
+                status.innerHTML = '<div class="error">❌ Ошибка при генерации ключа: ' + error.message + '</div>';
             } finally {
                 btn.disabled = false;
             }
-        }
-
-        async function getIP() {
-            const response = await fetch('https://api.ipify.org?format=json');
-            const data = await response.json();
-            return data.ip;
         }
     </script>
 </body>
